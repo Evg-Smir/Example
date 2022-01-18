@@ -1,0 +1,52 @@
+clone:
+  lfs: true
+
+image: node:14-alpine
+
+definitions: 
+  steps:
+    - step: &build-step
+        name: Build and test
+        script:
+          - yarn install
+          - yarn build
+        artifacts:
+          - dist/**
+    - step: &deploy-step
+        name: Deploy to test
+        deployment: test
+        script:
+          - export BRANCH="${BITBUCKET_BRANCH#*/}"
+          - export REMOTE_PATH="$FRONTEND_PATH/$BRANCH/"
+          - export DEPLOY_COMMAND="$CREATE_HOST_COMMAND $BRANCH"
+          - echo "Create new host $BRANCH"
+          - pipe: atlassian/ssh-run:0.3.1
+            variables:
+              SSH_USER: $SSH_USER
+              SERVER: $SSH_HOST
+              SSH_KEY: $SSH_KEY
+              COMMAND: $DEPLOY_COMMAND
+          - echo "Deploy files"
+          - pipe: atlassian/rsync-deploy:0.6.0
+            variables:
+              USER: $SSH_USER
+              SERVER: $SSH_HOST
+              REMOTE_PATH: $REMOTE_PATH
+              LOCAL_PATH: 'dist/*'
+              DEBUG: 'true'
+              SSH_KEY: $SSH_KEY
+          - echo "Send slack notiff"
+          - pipe: atlassian/slack-notify:2.0.0
+            variables:
+              WEBHOOK_URL: $WEBHOOK_URL
+              PRETEXT: $WEBHOOK_HEADER
+              MESSAGE: "Landing <https://$BRANCH.fastprocrptert.com/?tid=00000000-0000-0000-0000-000000000000&wid=0&goals=0&locale=GB&facebook_pixel_id=123123&link=0000|$BRANCH> uploaded for [TEST]. \n <@U02AA2EEKV5> <@U02ANUZSG4V>"
+
+pipelines:
+  branches:   
+    landing/*: #any branch with a landing prefix
+      - step: *build-step
+      - step: *deploy-step
+    landing2/*: #any branch with a landing prefix
+      - step: *build-step
+      - step: *deploy-step

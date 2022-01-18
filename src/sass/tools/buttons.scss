@@ -1,0 +1,19 @@
+.btn-box {
+    position: relative;
+}
+
+.button {
+    min-width: 269px !important;
+
+    &:not(:disabled) {
+        &:hover {
+            filter: contrast(1.15);
+            color: white;
+        }
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: .65;
+    }
+}
